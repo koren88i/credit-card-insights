@@ -1,0 +1,48 @@
+# Dependencies and generated output
+node_modules/
+.next/
+out/
+dist/
+coverage/
+*.tsbuildinfo
+*.log
+
+# Local application data, private notes, and maintenance scripts
+/data/
+/local-only/
+/backups/
+/exports/
+/imports/
+/uploads/
+/creditcarddata/
+
+# Credentials and machine-specific configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+.npmrc
+
+# Financial statements, database copies, and downloaded backups
+*.xlsx
+*.xls
+*.csv
+*.tsv
+*.ofx
+*.qfx
+*.qif
+*.sqlite*
+*.db
+*.db-*
+*.bak
+*.backup
+credit-card-insights-backup*.json
+
+# Editor and operating system files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
