@@ -2,6 +2,38 @@
 
 Private, local analysis for credit-card `.xlsx` statements. It imports supported Hebrew card statements, keeps the data in local SQLite, and categorizes merchants using local Ollama AI.
 
+## See what it does
+
+All screenshots use invented transactions and card endings. AI responses are simulated for the demonstration; the screenshots show the actual app and its categorization workflow.
+
+### Automatic tagging with local AI
+
+Categorize unknown merchants in batches with Ollama. Suggestions at 95% confidence or higher apply automatically; uncertain suggestions go to the review queue, where you can confirm or change the category. Confirmed rules also apply to future imports.
+
+![Automatic tagging completes a batch and sends uncertain suggestions to a review queue with confidence scores and category controls.](docs/images/auto-tagging.png)
+
+### Tag a merchant once, update every matching transaction
+
+Work through merchant groups by spend or transaction count. Choose a category and press **Apply** to update all matching transactions and future imports. Create categories directly from the picker, inspect individual rows, and undo the last rule change.
+
+![Manual tagging groups transactions by merchant and applies a category to existing rows and future imports, with an Undo action.](docs/images/manual-tagging.png)
+
+### Explore the spending dashboard
+
+Compare monthly spending by category and card, track refunds separately, and narrow the view by date, card, category, or merchant. Switch between statement month and purchase date to answer different questions about your spending.
+
+![The dashboard shows spending totals, a reporting-period slider, monthly category totals, and spending by category and card.](docs/images/dashboard.png)
+
+### Drill down from a month to its transactions
+
+Click a monthly bar to open its category breakdown and transaction table. Click a category slice to narrow the table, sort the columns, or follow a category or merchant from the dashboard into the Transactions view.
+
+![A month drill-down pairs its spending-by-category chart with the underlying sortable transaction table.](docs/images/month-drill-down.png)
+
+Select a category slice to focus on its transactions. **Show all** restores the complete month.
+
+![Selecting the Groceries slice highlights that category and filters the month table to its three matching transactions.](docs/images/category-drill-down.png)
+
 ## Run
 
 Install Node.js 22 or 24, then run these commands from the project directory:
