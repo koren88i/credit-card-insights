@@ -1,4 +1,5 @@
 import { db } from './db';
+import { filterSchema, monthRange } from './filters';
 
 export type Filters = { basis?: 'purchase' | 'statement'; from?: string; to?: string; card?: string; category?: string; merchant?: string; query?: string; includeExcluded?: boolean };
 
@@ -83,6 +84,7 @@ export function merchantGroups(filters: Filters, sort: 'spend' | 'count' = 'spen
 }
 
 export function dashboard(filters: Filters) {
+  filters = filterSchema.parse(filters);
   const rows = queryRows(filters, 10000);
   const rowsWithExcluded = filters.includeExcluded ? rows : queryRows({ ...filters, includeExcluded: true }, 10000);
   const excludedRows = rowsWithExcluded.filter((row) => row.merchantExcluded);
@@ -96,14 +98,7 @@ export function dashboard(filters: Filters) {
     const present = rows.map(basis).sort();
     const start = filters.from ?? present[0];
     const end = filters.to ?? present.at(-1);
-    if (!start || !end || start > end) return [];
-    const months: string[] = [];
-    for (let value = start; value <= end;) {
-      months.push(value);
-      const [year, month] = value.split('-').map(Number);
-      value = `${month === 12 ? year + 1 : year}-${String(month === 12 ? 1 : month + 1).padStart(2, '0')}`;
-    }
-    return months;
+    return monthRange(start, end);
   };
   const stacked = (key: (row: TransactionRow) => string) => {
     const values = new Map<string, Record<string, string | number>>();

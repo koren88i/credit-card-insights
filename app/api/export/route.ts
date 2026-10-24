@@ -1,8 +1,9 @@
+import { secureApi } from '@/lib/secure-api';
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
 export const runtime = 'nodejs';
-export function GET() {
+function handleGET() {
   const database = db();
   const payload = {
     exportedAt: new Date().toISOString(),
@@ -13,3 +14,5 @@ export function GET() {
   };
   return new NextResponse(JSON.stringify(payload), { headers: { 'Content-Type': 'application/json', 'Content-Disposition': 'attachment; filename="credit-card-insights-backup.json"' } });
 }
+
+export const GET = secureApi(handleGET);

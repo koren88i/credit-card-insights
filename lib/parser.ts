@@ -1,5 +1,7 @@
 import * as XLSX from 'xlsx';
 
+export const MAX_WORKSHEET_ROWS = 20_000;
+
 export type ParsedTransaction = {
   rawMerchant: string; purchaseDate: string; chargedAmountIls: number; originalAmount: number | null;
   originalCurrency: string | null; chargedCurrency: string | null; voucher: string | null;
@@ -18,7 +20,7 @@ function parseDate(value: string) {
   if (!match) return null;
   const [, day, month, year] = match;
   const date = new Date(Date.UTC(2000 + Number(year), Number(month) - 1, Number(day)));
-  return Number.isNaN(date.valueOf()) ? null : date.toISOString().slice(0, 10);
+  return Number.isNaN(date.valueOf()) || date.getUTCDate() !== Number(day) || date.getUTCMonth() + 1 !== Number(month) ? null : date.toISOString().slice(0, 10);
 }
 
 function parseAmount(value: string) {
@@ -29,16 +31,19 @@ function parseAmount(value: string) {
 }
 
 function fileMetadata(fileName: string) {
-  const match = fileName.match(/^(\d{4})_(\d{2})_(\d{4})\.xlsx$/i);
+  const match = fileName.match(/^(\d{4})_(0[1-9]|1[0-2])_([1-9]\d{3})\.xlsx$/i);
   if (!match) throw new Error(`Expected file name in NNNN_MM_YYYY.xlsx format, such as 1111_01_2026.xlsx; received ${fileName}.`);
   return { cardLast4: match[1], statementMonth: `${match[3]}-${match[2]}` };
 }
 
 export async function parseStatement(fileName: string, content: Buffer): Promise<ParsedStatement> {
   const { cardLast4, statementMonth } = fileMetadata(fileName);
-  const workbook = XLSX.read(content, { type: 'buffer', raw: false });
+  if (content.byteLength > 5 * 1024 * 1024) throw new Error('Each statement must be at most 5 MB.');
+  const workbook = XLSX.read(content, { type: 'buffer', raw: false, sheetRows: MAX_WORKSHEET_ROWS + 1 });
   const firstSheet = workbook.SheetNames[0];
   if (!firstSheet) throw new Error(`${fileName} has no worksheet.`);
+  const range = XLSX.utils.decode_range(workbook.Sheets[firstSheet]['!ref'] ?? 'A1');
+  if (range.e.c >= 64 || range.e.r >= MAX_WORKSHEET_ROWS) throw new Error('Statement exceeds the 20,000-row or 64-column limit.');
   const rows = XLSX.utils.sheet_to_json<unknown[]>(workbook.Sheets[firstSheet], { header: 1, defval: '', raw: false });
 
   let headerRow = -1;

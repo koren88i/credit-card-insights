@@ -1,12 +1,17 @@
+import { secureApi } from '@/lib/secure-api';
+import { readJson, apiError } from '@/lib/request-body';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { ollamaStatus, runCategorization } from '@/lib/categorization';
 
 export const runtime = 'nodejs';
-export async function GET() { return NextResponse.json(await ollamaStatus()); }
-export async function POST(request: Request) {
+async function handleGET() { return NextResponse.json(await ollamaStatus()); }
+async function handlePOST(request: Request) {
   try {
-    const { model } = z.object({ model: z.string().min(1).default('gemma3:4b') }).parse(await request.json());
+    const { model } = z.object({ model: z.string().min(1).default('gemma3:4b') }).parse(await readJson(request));
     return NextResponse.json(await runCategorization(model));
-  } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : 'Categorization failed.' }, { status: 400 }); }
+  } catch (error) { return apiError(error, 'Categorization failed.'); }
 }
+
+export const GET = secureApi(handleGET);
+export const POST = secureApi(handlePOST);

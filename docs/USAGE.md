@@ -19,11 +19,15 @@ Open [http://127.0.0.1:3000](http://127.0.0.1:3000). The app is available only o
 2. Review the parsed, ignored, and duplicate-file counts.
 3. Select **Commit** to save the statements atomically.
 
+Each batch can contain up to 20 files totaling 20 MB, with a 5 MB limit per statement. A worksheet can contain up to 20,000 rows and 64 columns. Import previews expire after 24 hours; select the files again if a preview has expired.
+
 The importer supports the known Hebrew transaction headers, ignores pending or unbilled sections without a charged amount, and derives card ending and statement month from filenames in the form `NNNN_MM_YYYY.xlsx`. For example, the synthetic filename `1111_01_2026.xlsx` represents card ending `1111` and statement month January 2026. Select files from any folder on your computer; no particular statement folder is required.
 
 ## Explore spending
 
 Use the shared filters for purchase date or statement month, card, category, merchant text, and date range. The overview separates spending from refunds and credits. Click a category chart segment or a top merchant to open the matching transactions.
+
+Choose valid calendar months in chronological order. A reporting range can cover up to 240 months.
 
 The app starts with **Statement month** selected. Use it for what appeared on a specific card statement, which is helpful for installments. Switch to **Purchase date** when you need to analyze when something was bought.
 

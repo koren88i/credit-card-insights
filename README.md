@@ -76,4 +76,6 @@ Then select **Categorize unknown merchants** in the app. Suggestions below 95% c
 
 The source does not include statements or a populated database. Keep financial data in the ignored `data/` directory or outside the repository. The ignore rules also exclude statement files, database copies, local exports, and environment files. Before sharing code, review the staged files for private content, including any reports or screenshots you create.
 
-This is a local, single-user application without authentication. Keep it bound to localhost when using real financial data.
+This is a local, single-user application. It checks localhost hosts and request origins and requires a local access token for API requests, including exports. The browser handles this automatically. These checks protect the local browser workflow; keep the server bound to localhost and do not expose it as a public service.
+
+`npm run build` excludes private runtime folders, removes stale standalone output, and checks the resulting server traces and standalone files for private data. Build releases from a clean source checkout. Set `CREDIT_CARD_INSIGHTS_DATA_DIR` when starting the app to use a private data folder outside the checkout; the default remains `./data` for existing installations.

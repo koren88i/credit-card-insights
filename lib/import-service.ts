@@ -11,9 +11,22 @@ export type StagedBatch = { token: string; imports: StagedImport[]; createdAt: s
 
 const stagingDir = () => appDataPath('staging');
 const uploadsDir = () => appDataPath('uploads');
+const PREVIEW_TTL_MS = 24 * 60 * 60 * 1000;
+
+function pruneExpiredStages() {
+  const directory = stagingDir();
+  if (!fs.existsSync(directory)) return;
+  for (const name of fs.readdirSync(directory)) {
+    if (!/^[a-f0-9-]{36}(?:\.json|-\d{4}_(?:0[1-9]|1[0-2])_[1-9]\d{3}\.xlsx)$/i.test(name)) continue;
+    const file = path.join(directory, name);
+    const stat = fs.lstatSync(file);
+    if (stat.isFile() && Date.now() - stat.mtimeMs > PREVIEW_TTL_MS) fs.unlinkSync(file);
+  }
+}
 
 export function stageFile(name: string, content: Buffer, parsed: ParsedStatement): StagedImport {
   fs.mkdirSync(stagingDir(), { recursive: true });
+  pruneExpiredStages();
   const fileHash = crypto.createHash('sha256').update(content).digest('hex');
   const stagingPath = path.join(stagingDir(), `${randomUUID()}-${name}`);
   fs.writeFileSync(stagingPath, content);
@@ -29,9 +42,14 @@ export function saveStage(imports: StagedImport[]) {
 }
 
 export function loadStage(token: string) {
+  if (!/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(token)) throw new Error('Invalid import preview token.');
+  pruneExpiredStages();
   const source = path.join(stagingDir(), `${token}.json`);
   if (!fs.existsSync(source)) throw new Error('This import preview has expired. Please select the files again.');
-  return JSON.parse(fs.readFileSync(source, 'utf8')) as StagedBatch;
+  const batch = JSON.parse(fs.readFileSync(source, 'utf8')) as StagedBatch;
+  const createdAt = Date.parse(batch.createdAt);
+  if (!Number.isFinite(createdAt) || Date.now() - createdAt > PREVIEW_TTL_MS) throw new Error('This import preview has expired. Please select the files again.');
+  return batch;
 }
 
 function merchantFor(rawMerchant: string) {

@@ -2,8 +2,9 @@ import Database from 'better-sqlite3';
 import fs from 'node:fs';
 import path from 'node:path';
 import { DEFAULT_CATEGORIES, categoryId } from './categories';
+import { dataDirectory } from './data-path';
 
-const dataDir = path.join(process.cwd(), 'data');
+const dataDir = dataDirectory();
 const dbPath = path.join(dataDir, 'credit-card-insights.sqlite');
 let database: Database.Database | undefined;
 

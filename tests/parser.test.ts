@@ -20,6 +20,17 @@ async function statement(rows: Array<Record<string, string | number>>, includePe
 }
 
 describe('statement parser', () => {
+  it('rejects invalid statement months before opening a workbook', async () => {
+    await expect(parseStatement('1111_13_2026.xlsx', Buffer.alloc(0))).rejects.toThrow('Expected file name');
+  });
+  it('rejects oversized input before opening a workbook', async () => {
+    await expect(parseStatement('1111_01_2026.xlsx', Buffer.alloc(5 * 1024 * 1024 + 1))).rejects.toThrow('at most 5 MB');
+  });
+  it('rejects excessive worksheet width before reading its rows', async () => {
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([Array(65).fill('sample')]), 'Statement');
+    await expect(parseStatement('1111_01_2026.xlsx', XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' }))).rejects.toThrow('64-column');
+  });
   it('uses the billed header after a pending section and preserves foreign transaction fields', async () => {
     const file = await statement([{ 'תאריך רכישה': '31.12.25', 'שם בית עסק': 'סופר פארם סניף לדוגמה א', 'סכום עסקה': 20, 'מטבע עסקה': 'USD', 'סכום חיוב': 73.5, 'מטבע חיוב': '₪', "מס' שובר": '12345', 'פירוט נוסף': 'sample' }], true);
     const parsed = await parseStatement('1111_01_2026.xlsx', file);

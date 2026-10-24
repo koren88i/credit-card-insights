@@ -74,8 +74,16 @@ function ExcludedRowsToggle({ summary, includeExcluded, onToggle }: { summary: D
   return <button className={includeExcluded ? 'exclusion-status active' : 'exclusion-status'} disabled={!summary || (!rows && !includeExcluded)} onClick={onToggle}>{label}</button>;
 }
 
+function authorizedFetch(url: string, init?: RequestInit) {
+  const token = document.querySelector<HTMLMetaElement>('meta[name="insights-token"]')?.content;
+  if (!token) throw new Error('Reload the local app before continuing.');
+  const headers = new Headers(init?.headers);
+  headers.set('x-insights-token', token);
+  return fetch(url, { ...init, headers });
+}
+
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, init);
+  const response = await authorizedFetch(url, init);
   const data = await response.json();
   if (!response.ok) throw new Error(data.error ?? 'Request failed.');
   return data as T;
@@ -374,4 +382,20 @@ function TransactionsTable({ rows, categories, busy, onChange, onCreateCategory,
 function TransactionCategoryControl({ row, categories, busy, onChange, onCreateCategory }: { row: Transaction; categories: Category[]; busy: boolean; onChange: (row: Transaction, categoryId: string) => void; onCreateCategory: (row: Transaction) => void }) { const [value, setValue] = useState(row.categoryId ?? ''); useEffect(() => setValue(row.categoryId ?? ''), [row.categoryId]); return <div className="inline-change"><select value={value} onChange={(event) => { const selected = event.target.value; if (selected === '__new__') { onCreateCategory(row); return; } setValue(selected); }}><option value="">Choose category</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}<option value="__new__">+ Create new category…</option></select><button className="quiet" disabled={busy || !value} onClick={() => onChange(row, value)}>All rows</button></div>; }
 function CreateCategoryDialog({ merchant, busy, onClose, onCreate }: { merchant: string; busy: boolean; onClose: () => void; onCreate: (groupName: string, name: string) => void }) { return <div className="modal-backdrop" role="presentation"><form className="modal panel form" onSubmit={(event) => { event.preventDefault(); const form = new FormData(event.currentTarget); onCreate(String(form.get('groupName')), String(form.get('name'))); }}><h2>Create category for {merchant}</h2><p>This will create the category, then apply it to every matching merchant row—past and future.</p><label>Group<input name="groupName" required placeholder="e.g. Food" autoFocus /></label><label>Category<input name="name" required placeholder="e.g. Bakery" /></label><div className="modal-actions"><button type="button" className="quiet" disabled={busy} onClick={onClose}>Cancel</button><button className="primary" disabled={busy}>Create & apply</button></div></form></div>; }
 function CategoriesPanel({ categories, onAdd, onUpdate }: { categories: Category[]; onAdd: (event: React.FormEvent<HTMLFormElement>) => void; onUpdate: (id: string, values: { groupName?: string; name?: string; isActive?: boolean }) => void }) { return <div className="two-col"><article className="panel"><h2>Active categories</h2>{Object.entries(categories.reduce<Record<string, Category[]>>((groups, category) => { (groups[category.groupName] ??= []).push(category); return groups; }, {})).map(([group, list]) => <div className="category-group" key={group}><h3>{group}</h3>{list.map((category) => <form className="category-edit" key={category.id} onSubmit={(event) => { event.preventDefault(); const form = new FormData(event.currentTarget); onUpdate(category.id, { groupName: String(form.get('groupName')), name: String(form.get('name')) }); }}><input name="groupName" defaultValue={category.groupName} aria-label={`${category.name} group`} /><input name="name" defaultValue={category.name} aria-label={`${category.name} name`} /><button className="quiet">Save</button><button type="button" className="quiet" onClick={() => onUpdate(category.id, { isActive: false })}>Disable</button></form>)}</div>)}</article><form className="panel form" onSubmit={onAdd}><h2>Add a category</h2><label>Group<input name="groupName" required placeholder="e.g. Food" /></label><label>Category<input name="name" required placeholder="e.g. Bakery" /></label><button className="primary">Add category</button></form></div>; }
-function SettingsPanel({ busy }: { busy: boolean }) { const [status, setStatus] = useState<{ reachable: boolean; installed: boolean; models: string[]; defaultModel: string } | null>(null); useEffect(() => { void request<typeof status>('/api/categorization').then(setStatus).catch(() => setStatus({ reachable: false, installed: false, models: [], defaultModel: 'gemma3:4b' })); }, []); return <div className="two-col"><article className="panel"><h2>Local AI</h2><p>{status?.reachable ? 'Ollama is running locally.' : 'Ollama is not reachable.'}</p><p>Default: <code>gemma3:4b</code> {status?.installed ? '✓ installed' : '— not installed'}</p>{!status?.installed && <pre>ollama pull gemma3:4b</pre>}<p className="muted">The app sends only batched merchant groups and category choices to your local Ollama server.</p></article><article className="panel"><h2>Backup</h2><p>Download a JSON export of transactions, categories, merchants, and rules. Uploaded statements and SQLite data never leave this PC.</p><a className={busy ? 'disabled button' : 'primary button'} href="/api/export">Download local backup</a></article></div>; }
+function SettingsPanel({ busy }: { busy: boolean }) {
+  const [status, setStatus] = useState<{ reachable: boolean; installed: boolean; models: string[]; defaultModel: string } | null>(null);
+  const [backupError, setBackupError] = useState('');
+  useEffect(() => { void request<typeof status>('/api/categorization').then(setStatus).catch(() => setStatus({ reachable: false, installed: false, models: [], defaultModel: 'gemma3:4b' })); }, []);
+  async function downloadBackup() {
+    setBackupError('');
+    try {
+      const response = await authorizedFetch('/api/export');
+      if (!response.ok) throw new Error('Could not download backup. Reload the local app and try again.');
+      const url = URL.createObjectURL(await response.blob());
+      const link = document.createElement('a');
+      link.href = url; link.download = 'credit-card-insights-backup.json'; link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (error) { setBackupError(error instanceof Error ? error.message : 'Could not download backup.'); }
+  }
+  return <div className="two-col"><article className="panel"><h2>Local AI</h2><p>{status?.reachable ? 'Ollama is running locally.' : 'Ollama is not reachable.'}</p><p>Default: <code>gemma3:4b</code> {status?.installed ? 'Installed' : 'Not installed'}</p>{!status?.installed && <pre>ollama pull gemma3:4b</pre>}<p className="muted">The app sends only batched merchant groups and category choices to your local Ollama server.</p></article><article className="panel"><h2>Backup</h2><p>Download a JSON export of transactions, categories, merchants, and rules. Uploaded statements and SQLite data stay on this computer.</p><button className="primary" disabled={busy} onClick={() => void downloadBackup()}>Download local backup</button>{backupError && <p role="alert">{backupError}</p>}</article></div>;
+}
